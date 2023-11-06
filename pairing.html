@@ -6,7 +6,7 @@
         <meta charset="utf-8" />
         <title>Secret Santa Pairing</title>
 
-        <script src="vendors/Lodash-3.10.1.js"></script>
+        <script src="vendors/Lodash-4.17.21.js"></script>
         <script src="vendors/Cryptojs.aes-3.1.2.js"></script>
 
         <style>
@@ -98,14 +98,8 @@
                 font-size: 30px;
             }
 
-            #pairing-name {
+            .pairing {
                 font-size: 90px;
-            }
-
-            #pairing-details {
-                margin-bottom: 20px;
-
-                font-size: 20px;
             }
 
             .affiliate {
@@ -127,15 +121,11 @@
 
         <script>
 
-            var queryString = _.chain( location.search.slice( 1 ).split( /&/g ) )
-                .map( function ( item ) { if ( item ) return item.split( /=/ ).map( function ( str ) { return decodeURIComponent( str ); } ); } )
-                .compact().object().value();
+            var queryString = Object.fromEntries([...new URLSearchParams(location.search)]);
 
             var name = queryString.name;
 
-            var pairing = CryptoJS.AES.decrypt( queryString.pairing, queryString.key ).toString(CryptoJS.enc.Utf8);
-            var pairingDefinition = pairing.match( /^([^(]+)(?: (\([^)]+\)))?$/ );
-
+            var pairings = JSON.parse(CryptoJS.AES.decrypt( queryString.pairing, queryString.key ).toString(CryptoJS.enc.Utf8));
         </script>
 
     </head>
@@ -151,16 +141,18 @@
                     <script>document.getElementById('name').innerText = name</script>
 
                     <div class="pairing">
-                        <div id="pairing-name"></div>
-                        <div id="pairing-details"></div>
+                        <div id="pairing-name-0"></div>
                         <script>
-                            document.getElementById('pairing-name').innerText = pairingDefinition[1];
+                            document.getElementById('pairing-name-0').innerText = pairings[0];
+                        </script>
+                    </div>
 
-                            if (pairingDefinition[2]) {
-                                document.getElementById('pairing-details').innerText = pairingDefinition[2];
-                            } else {
-                                document.getElementById('pairing-details').style.display = 'none';
-                            }
+                    <div class="title">and</div>
+
+                    <div class="pairing">
+                        <div id="pairing-name-1"></div>
+                        <script>
+                            document.getElementById('pairing-name-1').innerText = pairings[1];
                         </script>
                     </div>
 

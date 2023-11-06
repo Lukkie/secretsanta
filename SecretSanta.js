@@ -1,9 +1,5 @@
 var SecretSanta = function () {
-
     this.names = [];
-
-    this.enforced = Object.create( null );
-    this.blacklists = Object.create( null );
 };
 
 
@@ -16,26 +12,6 @@ SecretSanta.prototype.add = function ( name ) {
 
     var subapi = { };
 
-    subapi.enforce = function ( other ) {
-
-        this.enforced[ name ] = other;
-
-        return subapi;
-
-    }.bind( this );
-
-    subapi.blacklist = function ( other ) {
-
-        if ( ! Object.prototype.hasOwnProperty.call( this.blacklists, name ) )
-            this.blacklists[ name ] = [];
-
-        if ( this.blacklists[ name ].indexOf( other ) === -1 )
-            this.blacklists[ name ].push( other );
-
-        return subapi;
-
-    }.bind( this );
-
     return subapi;
 
 };
@@ -44,39 +20,25 @@ SecretSanta.prototype.generate = function () {
 
     var pairings = Object.create( null );
     var candidatePairings = Object.create( null );
+    var timesChosen = Object.create( null );
 
+    
+
+    // For each person, a list of possible candidates is generated (name => list(names))
+    // We want to select 2 names per gifter, so let's add each name twice
+    // And we initialize pairings as a dictionary of lists
+    // we also initialize timesChosen to be 0 for each name
     this.names.forEach( function ( name ) {
+        pairings[name] = [];
+        timesChosen[name] = 0;
 
-        if ( Object.prototype.hasOwnProperty.call( this.enforced, name ) ) {
+        var candidates = _.difference( this.names, [ name ] );
+        // candidates = _.concat(candidates, candidates);
 
-            var enforced = this.enforced[ name ];
-
-            if ( this.names.indexOf( enforced ) === -1 )
-                throw new Error( name + ' is paired with ' + enforced + ', which hasn\'t been declared as a possible pairing' );
-
-            Object.keys( pairings ).forEach( function ( name ) {
-
-                if ( pairings[ name ] === enforced ) {
-                    throw new Error( 'Per your rules, multiple persons are paired with ' + enforced );
-                }
-
-            } );
-
-            candidatePairings[ name ] = [ this.enforced[ name ] ];
-
-        } else {
-
-            var candidates = _.difference( this.names, [ name ] );
-
-            if ( Object.prototype.hasOwnProperty.call( this.blacklists, name ) )
-                candidates = _.difference( candidates, this.blacklists[ name ] );
-
-            candidatePairings[ name ] = candidates;
-
-        }
-
+        candidatePairings[ name ] = candidates;
     }, this );
 
+    // Finds the next gifter by looking at the number of potential targets there are, and taking the minimum
     var findNextGifter = function () {
 
         var names = Object.keys( candidatePairings );
@@ -84,25 +46,38 @@ SecretSanta.prototype.generate = function () {
         var minCandidateCount = _.min( names.map( function ( name ) { return candidatePairings[ name ].length; } ) );
         var potentialGifters = names.filter( function ( name ) { return candidatePairings[ name ].length === minCandidateCount; } );
 
-        return _.sample( potentialGifters );
+        return _.sample( potentialGifters ); // Random selection
 
     };
 
+    // Create the matches while there are possible pairings in candidatePairings
     while ( Object.keys( candidatePairings ).length > 0 ) {
 
         var name = findNextGifter();
 
         if ( candidatePairings[ name ].length === 0 )
-            throw new Error('We haven\'t been able to find a match for ' + name + '! Press "Generate" to try again and, if it still doesn\'t work, try removing some exclusions from your rules. Sorry for the inconvenience!');
+            return this.generate(); // Lazy, if it doesn't work out, just try again
 
-        var pairing = _.sample( candidatePairings[ name ] );
-        delete candidatePairings[ name ];
+        var pairing = _.sample( candidatePairings[ name ] ); // Gifter is paired with a random name in his candidates list
 
-        Object.keys( candidatePairings ).forEach( function ( name ) {
-            candidatePairings[ name ] = _.without( candidatePairings[ name ], pairing );
-        } );
+        // Only remove when there was already a pairing for this person
+        if (pairings[name].length >= 1) {
+            delete candidatePairings[ name ]; // Gifter is removed so that they can't be a gifter anymore
+        } else {
+            // Otherwise, candidate is removed from list of gifter so they can't be chosen again by the same gifter
+            candidatePairings[name] = _.without(candidatePairings[name], pairing);
+        }
 
-        pairings[ name ] = pairing;
+        timesChosen[pairing] += 1;
+
+        // Candidate is removed from list of candidates for all yet-to-be-chosen gifters, but only when they've been paired twice already
+        if (timesChosen[pairing] >= 2) {
+            Object.keys( candidatePairings ).forEach( function ( name ) {
+                candidatePairings[ name ] = _.without( candidatePairings[ name ], pairing );
+            } );
+        }
+
+        pairings[ name ].push(pairing);
 
     }
 
