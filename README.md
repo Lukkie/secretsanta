@@ -1,6 +1,6 @@
 # Secret Santa
 
-Check it live on [arcanis.github.io/secretsanta/](http://arcanis.github.io/secretsanta/).
+Check it live on [lukkie.github.io/secretsanta/](http://lukkie.github.io/secretsanta/).
 
 ## License (MIT)
 
